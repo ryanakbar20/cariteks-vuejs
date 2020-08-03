@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fundamental VueJS</title>
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
+    />
+    <link rel="stylesheet" href="./assets/css/style.css" />
+    <link rel="icon" type="image/png" href="./assets/img/logo.png" />
+  </head>
+  <body class="bg-dark">
+    <div id="app" class="container mt-5">
+      <div
+        class="row flex-column align-items-center justify-content-center text-center mt-5"
+      >
+        <div class="col-3 flex-column align-self-start text-white">
+          <small>Masukan Url Video Youtube</small>
+          <div class="row">
+            <div class="col input-group input-group-sm">
+              <input
+                type="text"
+                class="form-control"
+                v-model="url"
+                size="small"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="col">
+          <h1 class="text-white">Cari<span class="text-primary">teks</span></h1>
+          <div class="spinner-grow text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+          </div>
+        </div>
+
+        <div class="col-5">
+          <div class="input-group flex-nowrap mt-3">
+            <input
+              type="text"
+              class="form-control rounded-pill"
+              placeholder="Cari text dalam video youtube"
+              v-model="kataKunci"
+            />
+          </div>
+        </div>
+        <div class="col-5" :hidden="!paginasi.first">
+          <ul class="list-group text-left">
+            <li
+              class="list-group-item"
+              v-model="kataKunci"
+              v-for="(hasil, i) in daftarHasil"
+              :key="i"
+            >
+              <span v-html="hasil.text"></span>
+              <a :href="`${url}&t=${hasil.start}s`" target="_blank">Youtube</a>
+            </li>
+            <li class="list-group-item">
+              <button
+                class="btn btn-sm btn-primary"
+                :disabled="!paginasi.first"
+                @click="navigasi('first')"
+              >
+                First
+              </button>
+              <button
+                class="btn btn-sm btn-primary"
+                :disabled="!paginasi.prev"
+                @click="navigasi('prev')"
+              >
+                Prev
+              </button>
+              <button
+                class="btn btn-sm btn-primary"
+                :disabled="!paginasi.next"
+                @click="navigasi('next')"
+              >
+                Next
+              </button>
+              <button
+                class="btn btn-sm btn-primary"
+                :disabled="!paginasi.last"
+                @click="navigasi('last')"
+              >
+                Last
+              </button>
+              <small class="mx-3">Total Hasil : {{paginasi.total}}</small>
+              <small>Halaman : {{paginasi.page}}</small>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="./assets/js/index.js"></script>
+    <script>
+      new Vue({
+        el: '#app',
+        data: {
+          url: 'https://www.youtube.com/watch?v=klnvttPfOUM',
+          daftarHasil: [],
+          kataKunci: '',
+          paginasi: {
+            first: null,
+            last: null,
+            prev: null,
+            next: null,
+            total: 0,
+            page: null,
+          },
+        },
+        watch: {
+          kataKunci: pDebounce(async function tanganiKataKunci(kataKunci) {
+            if (kataKunci && kataKunci.length >= 3) {
+              await this.cari(kataKunci, this.url);
+            } else {
+              this.bersihkanHasilDanPaginasi();
+            }
+          }, 250),
+        },
+        methods: {
+          async cari(kataKunci, url, paginasi) {
+            try {
+              const respon = await fetch(
+                paginasi
+                  ? paginasi
+                  : `https://cari-teks-video-api.vercel.app/api/search?q=${kataKunci}&url=${encodeURIComponent(
+                      url
+                    )}&size=5`
+              ).then((_) => (_.ok ? _.json() : []));
+              this.daftarHasil = respon.data;
+              this.paginasi.first = respon.first;
+              this.paginasi.last = respon.last;
+              this.paginasi.prev = respon.prev;
+              this.paginasi.next = respon.next;
+              this.paginasi.total = respon.total;
+              this.paginasi.page = respon.page;
+            } catch (error) {
+              console.log(error);
+            }
+          },
+          async navigasi(type) {
+            if (!this.paginasi[type]) {
+              return;
+            }
+            await this.cari(this.kataKunci, this.url, this.paginasi[type]);
+          },
+          bersihkan() {
+            this.kataKunci = '';
+            this.bersihkanHasilDanPaginasi();
+          },
+          bersihkanHasilDanPaginasi() {
+            this.daftarHasil = [];
+            this.paginasi = {
+              first: null,
+              last: null,
+              prev: null,
+              next: null,
+              total: 0,
+              page: null,
+            };
+          },
+        },
+      });
+    </script>
+  </body>
+</html>
